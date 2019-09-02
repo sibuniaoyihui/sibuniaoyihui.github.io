@@ -25,7 +25,7 @@
 <meta property="og:image" content="https://i.imgur.com/uygyGHv.png">
 <meta property="og:image" content="https://i.imgur.com/O2GrYrG.png">
 <meta property="og:image" content="https://i.imgur.com/lS9H4sN.png">
-<meta property="og:updated_time" content="2019-09-01T20:01:31.420Z">
+<meta property="og:updated_time" content="2019-09-01T20:08:22.087Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="ssm框架整合小demo">
 <meta name="twitter:description" content="说明：ssm整合的方式有多种，该篇日志采用xml+注解的方式思路：先搭分别建好spring、springmvc、mybatis的环境，然后再用spring去整合其他两个框架">
@@ -263,9 +263,7 @@
 </li>
 <li><p>3.2.3 测试springmvc框架是否搭建成功</p>
 </li>
-<li><p>在</p>
-</li>
-<li><p>文件下创建账户控制器AccountController</p>
+<li><p>在controller文件下创建账户控制器AccountController</p>
 <figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">package com.teach.controller;</span><br><span class="line">import org.springframework.stereotype.Controller;</span><br><span class="line">import org.springframework.web.bind.annotation.RequestMapping;</span><br><span class="line">@Controller</span><br><span class="line">@RequestMapping(&quot;/account&quot;)</span><br><span class="line">public class AccountController &#123;</span><br><span class="line">/**</span><br><span class="line">* 查询所有的数据</span><br><span class="line">* @return</span><br><span class="line">*/</span><br><span class="line">@RequestMapping(&quot;/findAll&quot;)</span><br><span class="line">public String findAll() &#123;</span><br><span class="line">System.out.println(&quot;表现层：查询所有账户...&quot;);</span><br><span class="line">return &quot;list&quot;;</span><br><span class="line">  &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 </li>
 <li><p>在webapp文件夹下创建pages文件夹,在pages文件夹下创建list.jsp</p>
@@ -597,11 +595,11 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
           <ul class="article-tag-list" q-show="showTags">
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color3">技术</a>
+                <a href="javascript:void(0)" class="js-tag color3">随笔</a>
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color3">随笔</a>
+                <a href="javascript:void(0)" class="js-tag color3">技术</a>
               </li>
             
             <div class="clearfix"></div>
