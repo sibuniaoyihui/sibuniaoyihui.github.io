@@ -140,6 +140,108 @@
           <div id="js-content" class="content-ll">
             
   
+    <article id="post-SpringSecurity源码分析" class="article article-type-post  article-index" itemscope itemprop="blogPost">
+  <div class="article-inner">
+    
+      <header class="article-header">
+        
+  
+    <h1 itemprop="name">
+      <a class="article-title" href="/2019/08/07/SpringSecurity源码分析/">SpringSecurity配置DelegatingFilterProxy不能修改名字springSecurityFilterChain的原因</a>
+    </h1>
+  
+
+        
+        <a href="/2019/08/07/SpringSecurity源码分析/" class="archive-article-date">
+  	<time datetime="2019-08-06T19:36:48.000Z" itemprop="datePublished"><i class="icon-calendar icon"></i>2019-08-07</time>
+</a>
+        
+      </header>
+    
+	<!-- 目录内容 -->
+
+<!-- 目录内容结束 -->
+    <div class="article-entry" itemprop="articleBody">
+      
+        <a id="more"></a>
+<ul>
+<li><p><strong>问题:为什么DelegatingFilterProxy的filter-name必须是springSecurityFilterChain?</strong></p>
+</li>
+<li><p>web.xml配置DelegatingFilterProxy的内容如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">&lt;filter&gt;</span><br><span class="line">    &lt;filter-name&gt;springSecurityFilterChain&lt;/filter-name&gt;</span><br><span class="line">    &lt;filter-class&gt;org.springframework.web.filter.DelegatingFilterProxy&lt;/filter-class&gt;</span><br><span class="line">  &lt;/filter&gt;</span><br><span class="line">  &lt;filter-mapping&gt;</span><br><span class="line">    &lt;filter-name&gt;springSecurityFilterChain&lt;/filter-name&gt;</span><br><span class="line">    &lt;url-pattern&gt;/*&lt;/url-pattern&gt;</span><br><span class="line">  &lt;/filter-mapping&gt;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>以上配置中的filter-name是且必须是springSecurityFilterChain，其原因我们可以从源代码找出。</p>
+</li>
+<li><p>首先查看DelegatingFilterProxy这个类，我们可以知道Filter的核心在doFilter方法中，查看doFilter代码如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">@Override</span><br><span class="line">	public void doFilter(ServletRequest request, ServletResponse response, FilterChain filterChain)</span><br><span class="line">			throws ServletException, IOException &#123;</span><br><span class="line"></span><br><span class="line">		// Lazily initialize the delegate if necessary.</span><br><span class="line">		Filter delegateToUse = this.delegate;</span><br><span class="line">		if (delegateToUse == null) &#123;</span><br><span class="line">			synchronized (this.delegateMonitor) &#123;</span><br><span class="line">				delegateToUse = this.delegate;</span><br><span class="line">				if (delegateToUse == null) &#123;</span><br><span class="line">					WebApplicationContext wac = findWebApplicationContext();</span><br><span class="line">					if (wac == null) &#123;</span><br><span class="line">						throw new IllegalStateException(&quot;No WebApplicationContext found: &quot; +</span><br><span class="line">								&quot;no ContextLoaderListener or DispatcherServlet registered?&quot;);</span><br><span class="line">					&#125;</span><br><span class="line">					delegateToUse = initDelegate(wac);</span><br><span class="line">				&#125;</span><br><span class="line">				this.delegate = delegateToUse;</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>其中delegate也是一个Filter，所以真正执行的是delegate这个Filter，其的创建方法代码如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line">@Override</span><br><span class="line">protected void initFilterBean() throws ServletException &#123;</span><br><span class="line">	synchronized (this.delegateMonitor) &#123;</span><br><span class="line">		if (this.delegate == null) &#123;</span><br><span class="line">			// If no target bean name specified, use filter name.</span><br><span class="line">			if (this.targetBeanName == null) &#123;</span><br><span class="line">				this.targetBeanName = getFilterName();</span><br><span class="line">			&#125;</span><br><span class="line">			// Fetch Spring root application context and initialize the delegate early,</span><br><span class="line">			// if possible. If the root application context will be started after this</span><br><span class="line">			// filter proxy, we&apos;ll have to resort to lazy initialization.</span><br><span class="line">			WebApplicationContext wac = findWebApplicationContext();</span><br><span class="line">			if (wac != null) &#123;</span><br><span class="line">				this.delegate = initDelegate(wac);</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>以上代码中出现targetBeanName这个，字符串，从字面意思我们可以大概知道这是一个目标bean的名字，于是查看这个参数的获取函数getFilterName()代码如下：</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">@Nullable</span><br><span class="line">	protected String getFilterName() &#123;</span><br><span class="line">		return (this.filterConfig != null ? this.filterConfig.getFilterName() : this.beanName);</span><br><span class="line">	&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>这段代码就是从配置文获取当前的filter-name的值，也就是将springSecurityFilterChain这个名字赋值给了targetBeanName。</p>
+</li>
+<li><p>接下来查看delegate的赋值，其调用了initDelegate(wac)这个函数，我们查看其源代码可见如下:</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">rotected Filter initDelegate(WebApplicationContext wac) throws ServletException &#123;</span><br><span class="line">		String targetBeanName = getTargetBeanName();</span><br><span class="line">		Assert.state(targetBeanName != null, &quot;No target bean name set&quot;);</span><br><span class="line">		Filter delegate = wac.getBean(targetBeanName, Filter.class);</span><br><span class="line">		if (isTargetFilterLifecycle()) &#123;</span><br><span class="line">			delegate.init(getFilterConfig());</span><br><span class="line">		&#125;</span><br><span class="line">		return delegate;</span><br><span class="line">	&#125;</span><br></pre></td></tr></table></figure>
+</li>
+<li><p>从以上代码可以看出delegate的赋值是通过从spring容器ioc中获取的，其名称就是targetBeanName的值，也就是springSecurityFilterChain，这样也就明朗了，也就是在ioc容器创建时，会创建一个较叫springSecurityFilterChain的filter（更确切的说是一个FilterChainProxy）对象，这个名字就已经固定了，在获取时，就必须用这个名字获取。</p>
+</li>
+</ul>
+
+      
+
+      
+    </div>
+    <div class="article-info article-info-index">
+      
+      
+	<div class="article-tag tagcloud">
+		<i class="icon-price-tags icon"></i>
+		<ul class="article-tag-list">
+			 
+        		<li class="article-tag-list-item">
+        			<a href="javascript:void(0)" class="js-tag article-tag-list-link color3">技术</a>
+        		</li>
+      		
+		</ul>
+	</div>
+
+      
+
+      
+        <p class="article-more-link">
+          <a class="article-more-a" href="/2019/08/07/SpringSecurity源码分析/">展开全文 >></a>
+        </p>
+      
+
+      
+      <div class="clearfix"></div>
+    </div>
+  </div>
+</article>
+
+<aside class="wrap-side-operation">
+    <div class="mod-side-operation">
+        
+        <div class="jump-container" id="js-jump-container" style="display:none;">
+            <a href="javascript:void(0)" class="mod-side-operation__jump-to-top">
+                <i class="icon-font icon-back"></i>
+            </a>
+            <div id="js-jump-plan-container" class="jump-plan-container" style="top: -11px;">
+                <i class="icon-font icon-plane jump-plane"></i>
+            </div>
+        </div>
+        
+        
+    </div>
+</aside>
+
+
+
+
+  
     <article id="post-ssm整合" class="article article-type-post  article-index" itemscope itemprop="blogPost">
   <div class="article-inner">
     
@@ -470,11 +572,11 @@ return o(i(t),arguments.length<2?void 0:u(arguments[1]))}})},function(t,n,r){var
           <ul class="article-tag-list" q-show="showTags">
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color3">随笔</a>
+                <a href="javascript:void(0)" class="js-tag color3">技术</a>
               </li>
              
               <li class="article-tag-list-item">
-                <a href="javascript:void(0)" class="js-tag color3">技术</a>
+                <a href="javascript:void(0)" class="js-tag color3">随笔</a>
               </li>
             
             <div class="clearfix"></div>
